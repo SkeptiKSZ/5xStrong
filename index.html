@@ -1,0 +1,1341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>5xStrong • Web</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Chart.js for beautiful progress graphs -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=system-ui&amp;display=swap');
+        
+        :root {
+            --sl-black: #0F0F0F;
+            --sl-surface: #1A1A1A;
+            --sl-red: #8B0000;
+            --sl-red-bright: #B91C1C;
+            --sl-white: #FFFFFF;
+            --sl-grey: #B0B0B0;
+        }
+
+        body {
+            font-family: 'Aptos', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #0F0F0F;
+            color: #FFFFFF;
+        }
+
+        .sl-card {
+            background-color: #1A1A1A;
+            border: 1px solid #2A2A2A;
+        }
+
+        .sl-red {
+            color: #8B0000;
+        }
+
+        .sl-red-bg {
+            background-color: #8B0000;
+        }
+
+        .sl-red-bright-bg {
+            background-color: #B91C1C;
+        }
+
+        .section {
+            display: none;
+        }
+        
+        .section.active {
+            display: block;
+        }
+
+        .nav-item {
+            transition: all 0.2s ease;
+        }
+        
+        .nav-item.active {
+            color: #FFFFFF;
+            border-top: 3px solid #B91C1C;
+        }
+
+        .set-circle {
+            width: 52px;
+            height: 52px;
+            border: 3px solid #B91C1C;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.1rem;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        .set-circle.completed {
+            background-color: #B91C1C;
+            color: white;
+            border-color: #B91C1C;
+        }
+
+        .set-circle:hover {
+            transform: scale(1.05);
+        }
+
+        .workout-header {
+            background: linear-gradient(180deg, #1A1A1A 0%, #0F0F0F 100%);
+        }
+
+        .big-number {
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .gym-text {
+            font-weight: 600;
+            letter-spacing: -0.02em;
+        }
+
+        .secondary-text {
+            color: #B0B0B0;
+            font-weight: 400;
+        }
+
+        .emphasis {
+            font-style: italic;
+            color: #9CA3AF;
+        }
+    </style>
+</head>
+<body class="bg-[#0F0F0F] text-white min-h-screen pb-20">
+
+    <!-- Top Header -->
+    <div class="bg-[#111111] border-b border-[#2A2A2A] px-4 py-4 sticky top-0 z-50">
+        <div class="max-w-md mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-x-3">
+                <div class="w-9 h-9 bg-[#B91C1C] rounded-xl flex items-center justify-center">
+                    <i class="fa-solid fa-dumbbell text-white text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold tracking-tighter">5xStrong</h1>
+                    <p class="text-[#B0B0B0] text-xs -mt-1">WEB • v1.0</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-x-2">
+                <div class="px-3 py-1 bg-[#1A1A1A] rounded-full text-xs flex items-center gap-x-1.5">
+                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span class="text-[#B0B0B0]">Online</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="max-w-md mx-auto px-4 pt-6 pb-24">
+
+        <!-- HOME SECTION -->
+        <div id="home-section" class="section active">
+            <div class="mb-8">
+                <div class="flex items-end justify-between mb-1">
+                    <div>
+                        <p class="text-[#B0B0B0] text-sm">Good evening, Felipe</p>
+                        <h2 class="text-3xl font-bold tracking-tighter">Ready to lift?</h2>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-xs text-[#B0B0B0]">CURRENT STREAK</div>
+                        <div class="text-3xl font-bold text-[#B91C1C]">12</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Next Workout Card -->
+            <div class="sl-card rounded-3xl p-6 mb-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <div class="text-sm font-medium text-[#B0B0B0]">NEXT WORKOUT</div>
+                        <div class="text-2xl font-bold gym-text">Workout A</div>
+                        <div class="text-[#B0B0B0] text-sm">5xStrong 5×5 • Today</div>
+                    </div>
+                    <div class="text-right">
+                        <div onclick="checkAndStartWorkout()" class="px-4 py-2 bg-[#B91C1C] hover:bg-[#9B1B1B] text-white text-sm font-bold rounded-2xl flex items-center gap-x-2 cursor-pointer">
+                            <i class="fa-solid fa-play"></i>
+                            <span>START</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-3 text-sm">
+                    <div class="flex justify-between items-center">
+                        <span class="font-medium">Squat</span>
+                        <span class="font-mono text-[#B0B0B0]">5×5 @ <span class="font-bold text-white">245 lb</span></span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="font-medium">Bench Press</span>
+                        <span class="font-mono text-[#B0B0B0]">5×5 @ <span class="font-bold text-white">185 lb</span></span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="font-medium">Barbell Row</span>
+                        <span class="font-mono text-[#B0B0B0]">5×5 @ <span class="font-bold text-white">155 lb</span></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="grid grid-cols-3 gap-3">
+                <div class="sl-card rounded-2xl p-4 text-center">
+                    <div class="text-xs text-[#B0B0B0]">THIS WEEK</div>
+                    <div class="text-2xl font-bold">3/3</div>
+                    <div class="text-[10px] text-green-400">100%</div>
+                </div>
+                <div class="sl-card rounded-2xl p-4 text-center">
+                    <div class="text-xs text-[#B0B0B0]">TOTAL VOLUME</div>
+                    <div class="text-2xl font-bold">12.4k</div>
+                    <div class="text-[10px] text-[#B0B0B0]">lbs</div>
+                </div>
+                <div class="sl-card rounded-2xl p-4 text-center">
+                    <div class="text-xs text-[#B0B0B0]">BEST SQUAT</div>
+                    <div class="text-2xl font-bold">265</div>
+                    <div class="text-[10px] text-[#B0B0B0]">lb × 5</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- WORKOUT SECTION -->
+        <div id="workout-section" class="section">
+            <div class="workout-header sticky top-[73px] z-40 -mx-4 px-4 py-4 border-b border-[#2A2A2A]">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="flex items-center gap-x-2">
+                            <span class="px-3 py-1 text-xs font-bold bg-[#B91C1C] rounded-full">WORKOUT A</span>
+                            <span class="font-semibold">5xStrong 5×5</span>
+                        </div>
+                        <div class="text-sm text-[#B0B0B0] mt-0.5">3 exercises • ~45 min</div>
+                    </div>
+                    <button onclick="showWarmupModal()"
+                            class="px-4 py-2 text-sm bg-[#1A1A1A] hover:bg-[#2A2A2A] rounded-2xl flex items-center gap-x-2 text-sm font-medium">
+                        <i class="fa-solid fa-fire"></i>
+                        <span>Warmup</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Exercises -->
+            <div class="space-y-4 mt-4">
+                
+                <!-- Squat -->
+                <div class="sl-card rounded-3xl p-5">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <div class="font-bold text-xl">Squat</div>
+                            <div class="text-sm text-[#B0B0B0]">5 sets × 5 reps</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-3xl font-bold big-number">245</div>
+                            <div class="text-xs text-[#B0B0B0] -mt-1">lb</div>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-3 justify-center">
+                        <div onclick="logSet(this, 0)" class="set-circle rounded-full border-[#B91C1C] text-[#B91C1C] font-bold">1</div>
+                        <div onclick="logSet(this, 1)" class="set-circle rounded-full border-[#B91C1C] text-[#B91C1C] font-bold">2</div>
+                        <div onclick="logSet(this, 2)" class="set-circle rounded-full border-[#B91C1C] text-[#B91C1C] font-bold">3</div>
+                        <div onclick="logSet(this, 3)" class="set-circle rounded-full border-[#B91C1C] text-[#B91C1C] font-bold">4</div>
+                        <div onclick="logSet(this, 4)" class="set-circle rounded-full border-[#B91C1C] text-[#B91C1C] font-bold">5</div>
+                    </div>
+                    
+                    <div class="mt-4 flex justify-between items-center text-xs">
+                        <div class="px-3 py-1 bg-[#111] rounded-xl text-[#B0B0B0]">
+                            Last: <span class="font-medium text-white">245 × 5</span>
+                        </div>
+                        <button onclick="showRestTimer()" 
+                                class="text-[#B91C1C] hover:text-[#B91C1C] flex items-center gap-x-1 text-xs font-medium">
+                            <i class="fa-solid fa-clock"></i>
+                            <span>REST TIMER</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Bench Press -->
+                <div class="sl-card rounded-3xl p-5">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <div class="font-bold text-xl">Bench Press</div>
+                            <div class="text-sm text-[#B0B0B0]">5 sets × 5 reps</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-3xl font-bold big-number">185</div>
+                            <div class="text-xs text-[#B0B0B0] -mt-1">lb</div>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-3 justify-center">
+                        <div onclick="logSet(this, 0)" class="set-circle rounded-full border-[#B91C1C] text-[#B91C1C] font-bold">1</div>
+                        <div onclick="logSet(this, 1)" class="set-circle rounded-full border-[#B91C1C] text-[#B91C1C] font-bold">2</div>
+                        <div onclick="logSet(this, 2)" class="set-circle rounded-full border-[#B91C1C] text-[#B91C1C] font-bold">3</div>
+                        <div onclick="logSet(this, 3)" class="set-circle rounded-full border-[#B91C1C] text-[#B91C1C] font-bold">4</div>
+                        <div onclick="logSet(this, 4)" class="set-circle rounded-full border-[#B91C1C] text-[#B91C1C] font-bold">5</div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="mt-8">
+                <button onclick="finishWorkout()"
+                        class="w-full py-4 bg-[#B91C1C] hover:bg-[#9B1B1B] active:bg-[#7F1D1D] transition-colors text-white font-bold text-lg rounded-3xl flex items-center justify-center gap-x-2">
+                    <span>FINISH WORKOUT</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- PROGRESS SECTION -->
+        <div id="progress-section" class="section">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl font-bold">Progress</h2>
+                <div class="text-xs px-3 py-1 bg-[#1A1A1A] rounded-full text-[#B0B0B0]">Last 12 weeks</div>
+            </div>
+
+            <!-- Current PRs -->
+            <div class="grid grid-cols-2 gap-3 mb-6">
+                <div class="sl-card rounded-2xl p-4">
+                    <div class="text-xs text-[#B0B0B0]">SQUAT PR</div>
+                    <div class="flex items-baseline gap-x-1">
+                        <span class="text-4xl font-bold">265</span>
+                        <span class="text-lg text-[#B0B0B0]">lb</span>
+                    </div>
+                    <div class="text-xs text-green-400 mt-1">+20 lb since starting</div>
+                </div>
+                <div class="sl-card rounded-2xl p-4">
+                    <div class="text-xs text-[#B0B0B0]">BENCH PR</div>
+                    <div class="flex items-baseline gap-x-1">
+                        <span class="text-4xl font-bold">205</span>
+                        <span class="text-lg text-[#B0B0B0]">lb</span>
+                    </div>
+                    <div class="text-xs text-green-400 mt-1">+25 lb since starting</div>
+                </div>
+            </div>
+
+            <!-- Squat Progression Line Chart -->
+            <div class="sl-card rounded-3xl p-5 mb-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <div class="font-semibold">Squat Progression</div>
+                        <div class="text-xs text-[#B0B0B0]">Working weight over time</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-2xl font-bold">265 <span class="text-sm text-[#B0B0B0]">lb</span></div>
+                    </div>
+                </div>
+                <canvas id="squatProgressChart" height="120"></canvas>
+            </div>
+
+            <!-- Weekly Volume Bar Chart -->
+            <div class="sl-card rounded-3xl p-5 mb-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <div class="font-semibold">Weekly Training Volume</div>
+                        <div class="text-xs text-[#B0B0B0]">Total weight lifted per week</div>
+                    </div>
+                </div>
+                <canvas id="volumeChart" height="110"></canvas>
+            </div>
+
+            <!-- Estimated 1RM Trend -->
+            <div class="sl-card rounded-3xl p-5">
+                <div class="mb-4">
+                    <div class="font-semibold">Estimated 1RM Trend</div>
+                    <div class="text-xs text-[#B0B0B0]">Based on 5×5 performance</div>
+                </div>
+                <canvas id="e1rmChart" height="100"></canvas>
+            </div>
+        </div>
+
+        <!-- HISTORY SECTION (Simple List) -->
+        <div id="history-section" class="section">
+            <h2 class="text-2xl font-bold mb-6">History</h2>
+            
+            <div class="space-y-3">
+                <div class="sl-card rounded-2xl px-5 py-4 flex justify-between items-center">
+                    <div>
+                        <div class="font-semibold">Workout A • Jan 15</div>
+                        <div class="text-xs text-[#B0B0B0]">5xStrong 5×5 • 3 exercises</div>
+                    </div>
+                    <div class="text-right text-sm">
+                        <div class="font-mono">245 lb</div>
+                        <div class="text-xs text-green-400">All sets completed</div>
+                    </div>
+                </div>
+                
+                <div class="sl-card rounded-2xl px-5 py-4 flex justify-between items-center">
+                    <div>
+                        <div class="font-semibold">Workout B • Jan 13</div>
+                        <div class="text-xs text-[#B0B0B0]">5xStrong 5×5 • 3 exercises</div>
+                    </div>
+                    <div class="text-right text-sm">
+                        <div class="font-mono">185 lb</div>
+                        <div class="text-xs text-[#B0B0B0]">4/5 sets</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CALENDAR SECTION -->
+        <div id="calendar-section" class="section">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl font-bold">Calendar</h2>
+                <div class="flex items-center gap-x-2">
+                    <button onclick="prevMonth()" class="px-3 py-1.5 bg-[#1A1A1A] hover:bg-[#2A2A2A] rounded-xl text-sm">
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                    <div id="calendar-month" class="font-semibold text-lg px-4">June 2026</div>
+                    <button onclick="nextMonth()" class="px-3 py-1.5 bg-[#1A1A1A] hover:bg-[#2A2A2A] rounded-xl text-sm">
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Calendar Grid -->
+            <div class="sl-card rounded-3xl p-4">
+                <!-- Day Headers -->
+                <div class="grid grid-cols-7 gap-1 mb-2 text-center text-xs text-[#B0B0B0] font-medium">
+                    <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+                </div>
+
+                <!-- Calendar Days -->
+                <div id="calendar-grid" class="grid grid-cols-7 gap-1 text-sm">
+                    <!-- Populated by JavaScript -->
+                </div>
+            </div>
+
+            <div class="mt-4 text-xs text-[#B0B0B0] flex items-center gap-x-2">
+                <div class="w-3 h-3 bg-[#B91C1C] rounded-full"></div>
+                <span>Workout completed</span>
+            </div>
+        </div>
+
+        <!-- SETTINGS SECTION -->
+        <div id="settings-section" class="section">
+            <h2 class="text-2xl font-bold mb-6">Settings</h2>
+            
+            <div class="space-y-4">
+                <div class="sl-card rounded-2xl p-5">
+                    <div class="font-semibold mb-3">Units</div>
+                    <div class="flex gap-2">
+                        <div class="flex-1 text-center py-3 bg-[#B91C1C] rounded-2xl font-bold">LB</div>
+                        <div class="flex-1 text-center py-3 bg-[#1A1A1A] rounded-2xl font-medium text-[#B0B0B0]">KG</div>
+                    </div>
+                </div>
+
+                <div class="sl-card rounded-2xl p-5">
+                    <div class="font-semibold mb-1">Current Program</div>
+                    <div class="text-[#B0B0B0]">5xStrong 5×5</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TUTORIAL SECTION -->
+        <div id="tutorial-section" class="section">
+            <h2 class="text-2xl font-bold mb-2">Form Tutorials</h2>
+            <p class="text-[#B0B0B0] text-sm mb-6">Learn proper technique from the official StrongLifts videos.</p>
+
+            <div class="space-y-4">
+                <!-- Squat -->
+                <div onclick="showVideoModal('Squat', 'VnV7vEi7Sz8')" class="sl-card rounded-2xl p-4 flex items-center gap-x-4 cursor-pointer active:bg-[#222]">
+                    <div class="w-12 h-12 bg-[#B91C1C] rounded-xl flex items-center justify-center flex-shrink-0">
+                        <i class="fa-solid fa-play text-white text-xl"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="font-bold">Squat</div>
+                        <div class="text-xs text-[#B0B0B0]">The King of Exercises • Full form guide</div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-[#B0B0B0]"></i>
+                </div>
+
+                <!-- Bench Press -->
+                <div onclick="showVideoModal('Bench Press', 'nA9nEWAHo5A')" class="sl-card rounded-2xl p-4 flex items-center gap-x-4 cursor-pointer active:bg-[#222]">
+                    <div class="w-12 h-12 bg-[#B91C1C] rounded-xl flex items-center justify-center flex-shrink-0">
+                        <i class="fa-solid fa-play text-white text-xl"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="font-bold">Bench Press</div>
+                        <div class="text-xs text-[#B0B0B0]">Proper setup, grip &amp; bar path</div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-[#B0B0B0]"></i>
+                </div>
+
+                <!-- Deadlift -->
+                <div onclick="showVideoModal('Deadlift', 'WP8lEbeY4LM')" class="sl-card rounded-2xl p-4 flex items-center gap-x-4 cursor-pointer active:bg-[#222]">
+                    <div class="w-12 h-12 bg-[#B91C1C] rounded-xl flex items-center justify-center flex-shrink-0">
+                        <i class="fa-solid fa-play text-white text-xl"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="font-bold">Deadlift</div>
+                        <div class="text-xs text-[#B0B0B0]">Conventional form with heavy example</div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-[#B0B0B0]"></i>
+                </div>
+
+                <!-- Overhead Press -->
+                <div onclick="showVideoModal('Overhead Press', 'ro3Mh9o7JPU')" class="sl-card rounded-2xl p-4 flex items-center gap-x-4 cursor-pointer active:bg-[#222]">
+                    <div class="w-12 h-12 bg-[#B91C1C] rounded-xl flex items-center justify-center flex-shrink-0">
+                        <i class="fa-solid fa-play text-white text-xl"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="font-bold">Overhead Press</div>
+                        <div class="text-xs text-[#B0B0B0]">Strict press technique</div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-[#B0B0B0]"></i>
+                </div>
+
+                <!-- Full Workout Demos -->
+                <div class="pt-4 border-t border-[#2A2A2A]">
+                    <div class="text-xs text-[#B0B0B0] mb-3 px-1">FULL WORKOUT DEMOS</div>
+                    
+                    <div onclick="showVideoModal('Workout A Demo', 'EP2g3Sj3qSw')" class="sl-card rounded-2xl p-4 flex items-center gap-x-4 cursor-pointer active:bg-[#222] mb-3">
+                        <div class="w-12 h-12 bg-[#1A1A1A] rounded-xl flex items-center justify-center flex-shrink-0">
+                            <i class="fa-solid fa-play text-[#B91C1C]"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="font-bold">Full Workout A</div>
+                            <div class="text-xs text-[#B0B0B0]">Squat • Bench • Row</div>
+                        </div>
+                    </div>
+
+                    <div onclick="showVideoModal('Workout B Demo', 'ro3Mh9o7JPU')" class="sl-card rounded-2xl p-4 flex items-center gap-x-4 cursor-pointer active:bg-[#222]">
+                        <div class="w-12 h-12 bg-[#1A1A1A] rounded-xl flex items-center justify-center flex-shrink-0">
+                            <i class="fa-solid fa-play text-[#B91C1C]"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="font-bold">Full Workout B</div>
+                            <div class="text-xs text-[#B0B0B0]">Squat • OHP • Deadlift</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Bottom Navigation -->
+    <div class="fixed bottom-0 left-0 right-0 bg-[#111111] border-t border-[#2A2A2A] max-w-md mx-auto">
+        <div class="flex justify-around items-center py-2 text-sm">
+            <div onclick="showSection('home-section')" class="nav-item active flex flex-col items-center px-3 py-1 text-xs">
+                <i class="fa-solid fa-home text-xl mb-0.5"></i>
+                <span>Home</span>
+            </div>
+            <div onclick="showSection('workout-section')" class="nav-item flex flex-col items-center px-3 py-1 text-xs text-[#B0B0B0]">
+                <i class="fa-solid fa-dumbbell text-xl mb-0.5"></i>
+                <span>Workout</span>
+            </div>
+            <div onclick="showSection('progress-section')" class="nav-item flex flex-col items-center px-3 py-1 text-xs text-[#B0B0B0]">
+                <i class="fa-solid fa-chart-line text-xl mb-0.5"></i>
+                <span>Progress</span>
+            </div>
+            <div onclick="showSection('calendar-section')" class="nav-item flex flex-col items-center px-3 py-1 text-xs text-[#B0B0B0]">
+                <i class="fa-solid fa-calendar text-xl mb-0.5"></i>
+                <span>Calendar</span>
+            </div>
+            <div onclick="showSection('history-section')" class="nav-item flex flex-col items-center px-3 py-1 text-xs text-[#B0B0B0]">
+                <i class="fa-solid fa-history text-xl mb-0.5"></i>
+                <span>History</span>
+            </div>
+            <div onclick="showSection('settings-section')" class="nav-item flex flex-col items-center px-3 py-1 text-xs text-[#B0B0B0]">
+                <i class="fa-solid fa-cog text-xl mb-0.5"></i>
+                <span>Settings</span>
+            </div>
+            <div onclick="showSection('tutorial-section')" class="nav-item flex flex-col items-center px-3 py-1 text-xs text-[#B0B0B0]">
+                <i class="fa-solid fa-play-circle text-xl mb-0.5"></i>
+                <span>Tutorial</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rest Timer Modal -->
+    <div id="timer-modal" onclick="if (event.target.id === 'timer-modal') hideRestTimer()" 
+         class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[100]">
+        <div onclick="event.stopImmediatePropagation()" class="sl-card w-full max-w-sm mx-4 rounded-3xl p-8 text-center">
+            <div class="text-sm text-[#B0B0B0] mb-1">REST</div>
+            <div id="timer-display" class="text-[92px] font-bold tabular-nums leading-none mb-1">3:00</div>
+            
+            <div class="flex justify-center gap-3 mt-6">
+                <button onclick="addRestTime(60)" 
+                        class="px-5 py-2.5 bg-[#1A1A1A] hover:bg-[#2A2A2A] rounded-2xl text-sm font-medium">+1 min</button>
+                <button onclick="hideRestTimer()" 
+                        class="px-8 py-2.5 bg-[#B91C1C] hover:bg-[#9B1B1B] text-white rounded-2xl font-bold">SKIP</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tailwind script with custom design system
+        function initializeTailwind() {
+            document.documentElement.style.setProperty('--accent-red', '#B91C1C');
+            
+            // Optional: You can extend Tailwind here if using a build step later
+        }
+
+        // Section navigation
+        function showSection(sectionId) {
+            // Hide all sections
+            document.querySelectorAll('.section').forEach(section => {
+                section.classList.remove('active');
+            });
+            
+            // Show target section
+            const target = document.getElementById(sectionId);
+            if (target) target.classList.add('active');
+
+            // Update nav active state
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+                if (item.getAttribute('onclick') && item.getAttribute('onclick').includes(sectionId)) {
+                    item.classList.add('active');
+                }
+            });
+        }
+
+        // Simple set logging
+        function logSet(element, setIndex) {
+            if (element.classList.contains('completed')) {
+                element.classList.remove('completed');
+                element.style.backgroundColor = 'transparent';
+                element.style.color = '#B91C1C';
+            } else {
+                element.classList.add('completed');
+                element.style.backgroundColor = '#B91C1C';
+                element.style.color = 'white';
+                
+                // Auto-start rest timer after logging a set
+                setTimeout(() => {
+                    if (!document.getElementById('timer-modal').classList.contains('hidden')) return;
+                    showRestTimer();
+                }, 800);
+            }
+        }
+
+        // Rest Timer
+        let timerInterval = null;
+        let timeLeft = 180;
+
+        function showRestTimer() {
+            const modal = document.getElementById('timer-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            
+            timeLeft = 180;
+            updateTimerDisplay();
+
+            if (timerInterval) clearInterval(timerInterval);
+            
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                updateTimerDisplay();
+                
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    // Optional: vibrate + sound
+                    if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+                    // You can add audio beep here
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const display = document.getElementById('timer-display');
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            display.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        function addRestTime(seconds) {
+            timeLeft += seconds;
+            updateTimerDisplay();
+        }
+
+        function hideRestTimer() {
+            const modal = document.getElementById('timer-modal');
+            modal.classList.remove('flex');
+            modal.classList.add('hidden');
+            
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+        }
+
+        function showWarmupModal() {
+            alert("Warmup calculator will be implemented in the next iteration.\n\nThis will show a ramp: Empty bar → 95 → 135 → 185 → work sets.");
+        }
+
+        function finishWorkout() {
+            if (confirm("Mark this workout as complete?")) {
+                alert("Workout saved! Progression will be calculated.\n\n(Full saving + progression logic coming next)");
+                showSection('home-section');
+            }
+        }
+
+        // Keyboard support
+        document.addEventListener('keydown', function(e) {
+            if (e.key === "/") {
+                e.preventDefault();
+                const workoutSection = document.getElementById('workout-section');
+                if (!workoutSection.classList.contains('active')) {
+                    showSection('workout-section');
+                }
+            }
+        });
+
+        // Initialize everything
+        function initApp() {
+            initializeTailwind();
+            
+            // Show home by default
+            document.getElementById('home-section').classList.add('active');
+            
+            // Make first nav item active
+            const firstNav = document.querySelector('.nav-item');
+            if (firstNav) firstNav.classList.add('active');
+
+            // Demo: Pre-complete first set of squat
+            setTimeout(() => {
+                const firstSet = document.querySelector('#workout-section .set-circle');
+                if (firstSet) {
+                    // Uncomment if you want a demo state
+                    // firstSet.classList.add('completed');
+                    // firstSet.style.backgroundColor = '#B91C1C';
+                    // firstSet.style.color = 'white';
+                }
+            }, 1200);
+
+            console.log('%c[5xStrong Web] Starter initialized with deep red + black design system.', 'color:#666');
+        }
+
+        // Boot the app
+        window.onload = initApp;
+
+        // ============================================
+        // PROGRESS CHARTS WITH RICH MOCK DATA
+        // ============================================
+
+        function initializeProgressCharts() {
+            // Only initialize if progress section exists
+            if (!document.getElementById('progress-section')) return;
+
+            // === 1. Squat Progression Line Chart ===
+            const squatCtx = document.getElementById('squatProgressChart');
+            if (squatCtx) {
+                new Chart(squatCtx, {
+                    type: 'line',
+                    data: {
+                        labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5', 'Week 6', 'Week 7', 'Week 8', 'Week 9', 'Week 10', 'Week 11', 'Week 12'],
+                        datasets: [{
+                            label: 'Squat Working Weight (lb)',
+                            data: [185, 195, 205, 215, 225, 235, 245, 250, 255, 260, 260, 265],
+                            borderColor: '#B91C1C',
+                            backgroundColor: 'rgba(185, 28, 28, 0.1)',
+                            borderWidth: 3,
+                            tension: 0.3,
+                            fill: true,
+                            pointBackgroundColor: '#B91C1C',
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 2,
+                            pointRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: '#1A1A1A',
+                                titleColor: '#fff',
+                                bodyColor: '#B0B0B0'
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: { color: '#2A2A2A', lineWidth: 0.5 },
+                                ticks: { color: '#6B7280', font: { size: 11 } }
+                            },
+                            y: {
+                                grid: { color: '#2A2A2A', lineWidth: 0.5 },
+                                ticks: { 
+                                    color: '#6B7280', 
+                                    font: { size: 11 },
+                                    stepSize: 20
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // === 2. Weekly Volume Bar Chart ===
+            const volumeCtx = document.getElementById('volumeChart');
+            if (volumeCtx) {
+                new Chart(volumeCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['W1', 'W2', 'W3', 'W4', 'W5', 'W6', 'W7', 'W8', 'W9', 'W10', 'W11', 'W12'],
+                        datasets: [{
+                            label: 'Total Volume (lbs)',
+                            data: [12400, 13200, 14100, 13800, 15200, 16100, 15800, 17200, 16900, 18100, 18500, 19200],
+                            backgroundColor: '#B91C1C',
+                            borderColor: '#8B0000',
+                            borderWidth: 1,
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false }
+                        },
+                        scales: {
+                            x: {
+                                grid: { color: '#2A2A2A', lineWidth: 0.5 },
+                                ticks: { color: '#6B7280', font: { size: 10 } }
+                            },
+                            y: {
+                                grid: { color: '#2A2A2A', lineWidth: 0.5 },
+                                ticks: { 
+                                    color: '#6B7280', 
+                                    font: { size: 10 },
+                                    callback: function(value) {
+                                        return (value / 1000) + 'k';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // === 3. Estimated 1RM Trend ===
+            const e1rmCtx = document.getElementById('e1rmChart');
+            if (e1rmCtx) {
+                new Chart(e1rmCtx, {
+                    type: 'line',
+                    data: {
+                        labels: ['W1', 'W2', 'W3', 'W4', 'W5', 'W6', 'W7', 'W8', 'W9', 'W10', 'W11', 'W12'],
+                        datasets: [{
+                            label: 'Est. Squat 1RM',
+                            data: [215, 225, 238, 250, 262, 273, 285, 290, 298, 305, 305, 312],
+                            borderColor: '#22C55E',
+                            backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                            borderWidth: 2.5,
+                            tension: 0.35,
+                            fill: true,
+                            pointRadius: 3,
+                            pointBackgroundColor: '#22C55E'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false }
+                        },
+                        scales: {
+                            x: {
+                                grid: { color: '#2A2A2A', lineWidth: 0.5 },
+                                ticks: { color: '#6B7280', font: { size: 10 } }
+                            },
+                            y: {
+                                grid: { color: '#2A2A2A', lineWidth: 0.5 },
+                                ticks: { color: '#6B7280', font: { size: 10 } }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        // Call chart initialization when progress section is shown
+        const originalShowSection = window.showSection;
+        window.showSection = function(sectionId) {
+            originalShowSection(sectionId);
+            
+            // Initialize charts when progress section becomes visible
+            if (sectionId === 'progress-section') {
+                setTimeout(() => {
+                    initializeProgressCharts();
+                }, 50);
+            }
+        };
+
+        // Also initialize charts if progress section is already active on load
+        setTimeout(() => {
+            const progressSection = document.getElementById('progress-section');
+            if (progressSection && progressSection.classList.contains('active')) {
+                initializeProgressCharts();
+            }
+        }, 800);
+
+        // ============================================
+        // CALENDAR VIEW + WORKOUT HISTORY MODAL
+        // ============================================
+
+        let currentMonth = 5; // June (0-indexed)
+        let currentYear = 2026;
+
+        // Workout history will be loaded from Firebase
+        let userWorkouts = {}; // Populated from Firestore
+
+        function renderCalendar() {
+            const grid = document.getElementById('calendar-grid');
+            const monthLabel = document.getElementById('calendar-month');
+            if (!grid || !monthLabel) return;
+
+            grid.innerHTML = '';
+            monthLabel.textContent = new Date(currentYear, currentMonth).toLocaleString('default', { month: 'long', year: 'numeric' });
+
+            const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+            // Empty cells for days before the 1st
+            for (let i = 0; i < firstDay; i++) {
+                const empty = document.createElement('div');
+                empty.className = 'h-10';
+                grid.appendChild(empty);
+            }
+
+            // Days of the month
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const hasWorkout = userWorkouts[dateStr];
+
+                const dayEl = document.createElement('div');
+                dayEl.className = `h-10 flex flex-col items-center justify-center rounded-xl text-sm cursor-pointer transition-all ${hasWorkout ? 'hover:bg-[#2A2A2A]' : ''}`;
+
+                if (hasWorkout) {
+                    dayEl.innerHTML = `
+                        <div class="relative">
+                            <span class="font-medium">${day}</span>
+                            <div class="absolute -top-0.5 -right-0.5 w-3 h-3 bg-[#B91C1C] rounded-full flex items-center justify-center">
+                                <i class="fa-solid fa-check text-[8px] text-white"></i>
+                            </div>
+                        </div>
+                    `;
+                    dayEl.onclick = () => showWorkoutModal(dateStr, hasWorkout);
+                } else {
+                    dayEl.innerHTML = `<span class="text-[#6B7280]">${day}</span>`;
+                }
+
+                // Highlight today
+                const today = new Date();
+                if (currentYear === today.getFullYear() && currentMonth === today.getMonth() && day === today.getDate()) {
+                    dayEl.classList.add('bg-[#B91C1C]', 'text-white', 'font-bold');
+                }
+
+                grid.appendChild(dayEl);
+            }
+        }
+
+        function prevMonth() {
+            currentMonth--;
+            if (currentMonth < 0) {
+                currentMonth = 11;
+                currentYear--;
+            }
+            renderCalendar();
+        }
+
+        function nextMonth() {
+            currentMonth++;
+            if (currentMonth > 11) {
+                currentMonth = 0;
+                currentYear++;
+            }
+            renderCalendar();
+        }
+
+        function showWorkoutModal(dateStr, workoutData = null) {
+            // If no data passed, try to get from userWorkouts
+            const workout = workoutData || userWorkouts[dateStr];
+            if (!workout) return;
+
+            const modalHTML = `
+                <div id="workout-modal" onclick="document.getElementById('workout-modal').remove()" 
+                     class="fixed inset-0 bg-black/80 flex items-end justify-center z-[200]">
+                    <div onclick="event.stopImmediatePropagation()" class="sl-card w-full max-w-md rounded-t-3xl p-6">
+                        <div class="flex justify-between items-start mb-5">
+                            <div>
+                                <div class="text-sm text-[#B0B0B0]">${new Date(dateStr).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</div>
+                                <div class="text-2xl font-bold">${workout.type || 'Workout'}</div>
+                                <div class="text-sm text-[#B0B0B0]">${workout.program || '5xStrong 5×5'}</div>
+                            </div>
+                            <button onclick="document.getElementById('workout-modal').remove()" class="text-2xl text-[#B0B0B0] hover:text-white">&times;</button>
+                        </div>
+
+                        <div class="space-y-4">
+                            <div class="flex justify-between text-sm">
+                                <span class="text-[#B0B0B0]">Exercises</span>
+                                <span class="font-medium">${workout.exercises || 3}</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-[#B0B0B0]">Status</span>
+                                <span class="font-medium text-green-400">Completed</span>
+                            </div>
+                        </div>
+
+                        <div class="mt-6 pt-5 border-t border-[#2A2A2A] text-xs text-[#B0B0B0]">
+                            Full workout details will load from Firebase
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+        }
+
+        // Initialize calendar when the page loads
+        setTimeout(() => {
+            const calendarSection = document.getElementById('calendar-section');
+            if (calendarSection) {
+                // Render calendar when user first visits the tab
+                const originalShow = window.showSection;
+                window.showSection = function(id) {
+                    originalShow(id);
+                    if (id === 'calendar-section') {
+                        renderCalendar();
+                    }
+                };
+            }
+        }, 500);
+
+        // ============================================
+        // STARTING WEIGHTS FEATURE (Sandbox-safe)
+        // ============================================
+
+        let startingWeights = {
+            Squat: 95,
+            "Bench Press": 95,
+            "Overhead Press": 65,
+            "Barbell Row": 95,
+            Deadlift: 135
+        };
+
+        // Safe localStorage wrapper (prevents crashes in sandboxed environments)
+        const safeStorage = {
+            getItem: (key) => {
+                try {
+                    return localStorage.getItem(key);
+                } catch (e) {
+                    console.warn('[5xStrong] localStorage unavailable (sandboxed). Using memory only.');
+                    return null;
+                }
+            },
+            setItem: (key, value) => {
+                try {
+                    localStorage.setItem(key, value);
+                    return true;
+                } catch (e) {
+                    console.warn('[5xStrong] Could not save to localStorage. Data will reset on refresh.');
+                    return false;
+                }
+            }
+        };
+
+        // Load from localStorage if available (with fallback)
+        function loadStartingWeights() {
+            const saved = safeStorage.getItem('lift5xstrong_startingWeights');
+            if (saved) {
+                try {
+                    startingWeights = JSON.parse(saved);
+                } catch (e) {
+                    console.warn('Failed to parse saved starting weights');
+                }
+            }
+        }
+
+        function saveStartingWeights() {
+            safeStorage.setItem('lift5xstrong_startingWeights', JSON.stringify(startingWeights));
+        }
+
+        function showStartingWeightsModal() {
+            loadStartingWeights();
+
+            const modalHTML = `
+                <div id="starting-weights-modal" onclick="document.getElementById('starting-weights-modal').remove()" 
+                     class="fixed inset-0 bg-black/80 flex items-center justify-center z-[200] p-4">
+                    <div onclick="event.stopImmediatePropagation()" class="sl-card w-full max-w-md rounded-3xl p-6">
+                        <div class="text-center mb-6">
+                            <h3 class="text-xl font-bold">Set Your Starting Weights</h3>
+                            <p class="text-sm text-[#B0B0B0] mt-1">Enter your current working weights or leave blank to use recommended defaults.</p>
+                        </div>
+
+                        <div class="space-y-4">
+                            ${Object.keys(startingWeights).map(exercise => `
+                                <div class="flex items-center justify-between">
+                                    <label class="font-medium">${exercise}</label>
+                                    <div class="flex items-center gap-x-2">
+                                        <input type="number" id="weight-${exercise.replace(/\s+/g, '')}" 
+                                               value="${startingWeights[exercise]}" 
+                                               class="w-24 bg-[#111] border border-[#2A2A2A] rounded-xl px-3 py-2 text-right font-mono text-lg">
+                                        <span class="text-[#B0B0B0] text-sm w-8">lb</span>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+
+                        <div class="flex gap-3 mt-8">
+                            <button onclick="useRecommendedDefaults()" 
+                                    class="flex-1 py-3 bg-[#1A1A1A] hover:bg-[#2A2A2A] rounded-2xl font-medium text-sm">
+                                Use Recommended
+                            </button>
+                            <button onclick="saveAndCloseStartingWeights()" 
+                                    class="flex-1 py-3 bg-[#B91C1C] hover:bg-[#9B1B1B] rounded-2xl font-bold text-sm">
+                                Save & Continue
+                            </button>
+                        </div>
+                        
+                        <div class="text-center mt-4">
+                            <button onclick="document.getElementById('starting-weights-modal').remove()" class="text-xs text-[#B0B0B0]">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+        }
+
+        function useRecommendedDefaults() {
+            const defaults = {
+                Squat: 95,
+                "Bench Press": 95,
+                "Overhead Press": 65,
+                "Barbell Row": 95,
+                Deadlift: 135
+            };
+
+            Object.keys(defaults).forEach(ex => {
+                const input = document.getElementById(`weight-${ex.replace(/\s+/g, '')}`);
+                if (input) input.value = defaults[ex];
+            });
+        }
+
+        function saveAndCloseStartingWeights() {
+            const modal = document.getElementById('starting-weights-modal');
+            if (!modal) return;
+
+            // Update startingWeights from inputs
+            Object.keys(startingWeights).forEach(exercise => {
+                const inputId = `weight-${exercise.replace(/\s+/g, '')}`;
+                const input = document.getElementById(inputId);
+                if (input && input.value) {
+                    startingWeights[exercise] = parseInt(input.value) || startingWeights[exercise];
+                }
+            });
+
+            saveStartingWeights();
+            modal.remove();
+
+            // Now start the workout
+            startWorkout();
+        }
+
+        function checkAndStartWorkout() {
+            loadStartingWeights();
+            
+            // Check if this is the first time (simple check)
+            const hasCustomWeights = safeStorage.getItem('lift5xstrong_startingWeights');
+            
+            if (!hasCustomWeights) {
+                // First time - ask for starting weights
+                showStartingWeightsModal();
+            } else {
+                startWorkout();
+            }
+        }
+
+        function startWorkout() {
+            // Switch to workout section
+            showSection('workout-section');
+            
+            // In a full version, we would load the actual weights from startingWeights here
+            console.log('%c[Lift 5xStrong] Workout started with weights:', 'color:#666', startingWeights);
+        }
+
+        // ============================================
+        // FIREBASE INTEGRATION (Ready for your config)
+        // ============================================
+
+        let firebaseApp = null;
+        let db = null;
+
+        function initializeFirebase() {
+            // TODO: Replace with your Firebase config
+            const firebaseConfig = {
+                // apiKey: "YOUR_API_KEY",
+                // authDomain: "YOUR_PROJECT.firebaseapp.com",
+                // projectId: "YOUR_PROJECT_ID",
+                // storageBucket: "YOUR_PROJECT.appspot.com",
+                // messagingSenderId: "YOUR_SENDER_ID",
+                // appId: "YOUR_APP_ID"
+            };
+
+            // Only initialize if config looks valid
+            if (firebaseConfig.apiKey && firebaseConfig.apiKey !== "YOUR_API_KEY") {
+                try {
+                    firebaseApp = firebase.initializeApp(firebaseConfig);
+                    db = firebase.firestore();
+                    
+                    // Enable offline persistence
+                    db.enablePersistence().catch((err) => {
+                        if (err.code !== 'failed-precondition') {
+                            console.log('Persistence not enabled:', err);
+                        }
+                    });
+
+                    console.log('%c[5xStrong] Firebase initialized successfully', 'color:#22c55e');
+                    
+                    // Load user's workout history from Firebase
+                    loadUserWorkoutsFromFirebase();
+                } catch (error) {
+                    console.error('Firebase initialization failed:', error);
+                }
+            } else {
+                console.log('%c[5xStrong] Firebase not configured yet. Using local storage only.', 'color:#fbbf24');
+            }
+        }
+
+        async function saveWorkoutToFirebase(workoutData) {
+            if (!db || !firebase.auth().currentUser) {
+                console.log('Firebase not ready or user not logged in');
+                return false;
+            }
+
+            try {
+                const userId = firebase.auth().currentUser.uid;
+                const workoutId = workoutData.id || generateWorkoutId(workoutData.program || '5xstrong-5x5', workoutData.type, new Date(workoutData.date));
+                
+                await db.collection('users').doc(userId)
+                    .collection('workouts').doc(workoutId)
+                    .set({
+                        ...workoutData,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+
+                console.log('Workout saved to Firebase:', workoutId);
+                return true;
+            } catch (error) {
+                console.error('Error saving workout to Firebase:', error);
+                return false;
+            }
+        }
+
+        async function loadUserWorkoutsFromFirebase() {
+            if (!db || !firebase.auth().currentUser) return;
+
+            try {
+                const userId = firebase.auth().currentUser.uid;
+                const snapshot = await db.collection('users').doc(userId)
+                    .collection('workouts')
+                    .orderBy('date', 'desc')
+                    .limit(50)
+                    .get();
+
+                userWorkouts = {};
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    if (data.date) {
+                        userWorkouts[data.date] = data;
+                    }
+                });
+
+                console.log('Loaded workouts from Firebase:', Object.keys(userWorkouts).length);
+                
+                // Re-render calendar if it's currently visible
+                const calendarSection = document.getElementById('calendar-section');
+                if (calendarSection && calendarSection.classList.contains('active')) {
+                    renderCalendar();
+                }
+            } catch (error) {
+                console.error('Error loading workouts from Firebase:', error);
+            }
+        }
+
+        // Initialize Firebase when page loads
+        setTimeout(() => {
+            initializeFirebase();
+        }, 500);
+
+        // Video Modal for Tutorials
+        function showVideoModal(exerciseName, videoId, description = '') {
+            const descHTML = description ? `<div class="mt-4 text-sm text-[#B0B0B0] px-1">${description}</div>` : '';
+
+            const modalHTML = `
+                <div id="video-modal" onclick="document.getElementById('video-modal').remove()" 
+                     class="fixed inset-0 bg-black/90 flex items-center justify-center z-[300] p-4">
+                    <div onclick="event.stopImmediatePropagation()" class="w-full max-w-2xl">
+                        <div class="flex justify-between items-center mb-3 px-1">
+                            <div class="font-bold text-xl">${exerciseName} Form</div>
+                            <button onclick="document.getElementById('video-modal').remove()" class="text-3xl text-[#B0B0B0] hover:text-white">&times;</button>
+                        </div>
+                        
+                        <div class="aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl">
+                            <iframe 
+                                width="100%" 
+                                height="100%" 
+                                src="https://www.youtube.com/embed/${videoId}" 
+                                frameborder="0" 
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                allowfullscreen>
+                            </iframe>
+                        </div>
+                        
+                        ${descHTML}
+                        
+                        <div class="mt-4 text-xs text-[#B0B0B0] px-1">
+                            Official StrongLifts form video
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+        }
+
+        function showWarmupInfo() {
+            const modalHTML = `
+                <div id="warmup-modal" onclick="document.getElementById('warmup-modal').remove()" 
+                     class="fixed inset-0 bg-black/80 flex items-center justify-center z-[300] p-4">
+                    <div onclick="event.stopImmediatePropagation()" class="sl-card w-full max-w-md rounded-3xl p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <div class="font-bold text-xl">Warm-up Protocol</div>
+                            <button onclick="document.getElementById('warmup-modal').remove()" class="text-2xl">&times;</button>
+                        </div>
+                        
+                        <div class="space-y-4 text-sm">
+                            <div>
+                                <div class="font-semibold text-[#B91C1C] mb-1">Why Warm Up?</div>
+                                <p class="text-[#B0B0B0]">Increases body temperature, lubricates joints, practices form, and prepares you mentally for heavy lifts.</p>
+                            </div>
+                            
+                            <div>
+                                <div class="font-semibold mb-2">Recommended Warm-up (per exercise)</div>
+                                <ul class="space-y-1.5 text-[#B0B0B0]">
+                                    <li class="flex gap-2"><span class="text-[#B91C1C]">•</span> Start with empty bar or very light weight (2×5)</li>
+                                    <li class="flex gap-2"><span class="text-[#B91C1C]">•</span> Add weight gradually with 5-rep sets</li>
+                                    <li class="flex gap-2"><span class="text-[#B91C1C]">•</span> No long rests between warmup sets</li>
+                                    <li class="flex gap-2"><span class="text-[#B91C1C]">•</span> Final warmup set close to working weight</li>
+                                </ul>
+                            </div>
+                            
+                            <div class="pt-3 border-t border-[#2A2A2A] text-xs text-[#B0B0B0]">
+                                Example for 225 lb Squat:<br>
+                                Empty bar × 5 → 95 lb × 5 → 135 lb × 5 → 185 lb × 5 → Work sets
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+        }
+    </script>
+</body>
+</html>

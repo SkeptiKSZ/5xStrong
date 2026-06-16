@@ -528,7 +528,8 @@
         email: null,
         programId: null,
         weights: {},        // { "Squat": 95, ... } current working weights
-        workouts: [],       // [{ id, date, programId, workoutType, exercises:[{name,sets,reps,weight,completed}], allCompleted }]
+        stalls: {},         // { "Squat": 0 } consecutive failed workouts at current weight (StrongLifts deload logic)
+        workouts: [],       // [{ id, date, programId, workoutType, exercises:[...], allCompleted }]
         liveSets: {}         // during a workout: { "0-2": "completed"|"missed" }
     };
     let firebaseReady = false;
@@ -665,6 +666,7 @@
                     const s = settingsDoc.data();
                     state.programId = s.programId || null;
                     state.weights = s.weights || {};
+                    state.stalls = s.stalls || {};
                 }
                 const snap = await db.collection("users").doc(state.uid).collection("workouts").orderBy("date").get();
                 state.workouts = [];
@@ -672,13 +674,13 @@
             } catch (e) { console.error("[5xStrong] load failed:", e); }
         } else {
             const raw = safeStorage.getItem(localKey());
-            if (raw) { try { const o=JSON.parse(raw); state.programId=o.programId||null; state.weights=o.weights||{}; state.workouts=o.workouts||[]; } catch(e){} }
+            if (raw) { try { const o=JSON.parse(raw); state.programId=o.programId||null; state.weights=o.weights||{}; state.stalls=o.stalls||{}; state.workouts=o.workouts||[]; } catch(e){} }
         }
     }
 
     async function saveSettings() {
         if (firebaseReady && db && state.uid) {
-            try { await db.collection("users").doc(state.uid).set({ programId: state.programId, weights: state.weights }, { merge: true }); }
+            try { await db.collection("users").doc(state.uid).set({ programId: state.programId, weights: state.weights, stalls: state.stalls }, { merge: true }); }
             catch(e){ console.error("[5xStrong] saveSettings failed:", e); }
         } else { persistLocal(); }
     }
@@ -691,7 +693,7 @@
     }
 
     function persistLocal() {
-        safeStorage.setItem(localKey(), JSON.stringify({ programId: state.programId, weights: state.weights, workouts: state.workouts }));
+        safeStorage.setItem(localKey(), JSON.stringify({ programId: state.programId, weights: state.weights, stalls: state.stalls, workouts: state.workouts }));
     }
 
     function generateWorkoutId(programId, workoutType, date = new Date()) {
@@ -811,9 +813,17 @@
         document.getElementById("workout-meta").textContent = `${w.exercises.length} exercises • ${p.frequency}`;
         document.getElementById("workout-section").setAttribute("data-type", type);
 
-        document.getElementById("workout-exercises").innerHTML = w.exercises.map(([name,sets,reps], exIdx) => {
+        const legend = `<div class="text-xs text-[#B0B0B0] mb-1 flex items-center gap-x-4">
+            <span class="flex items-center gap-x-1.5"><span class="inline-flex w-4 h-4 rounded-full bg-[#B91C1C] items-center justify-center text-white text-[8px]"><i class="fa-solid fa-check"></i></span>tap once = done</span>
+            <span class="flex items-center gap-x-1.5"><span class="inline-flex w-4 h-4 rounded-full border border-[#7F1D1D] text-[#F87171] items-center justify-center text-[8px]"><i class="fa-solid fa-xmark"></i></span>tap twice = failed</span>
+        </div>`;
+        document.getElementById("workout-exercises").innerHTML = legend + w.exercises.map(([name,sets,reps], exIdx) => {
             const m = meta(name);
             const weight = m.unit === "bw" ? "BW" : `${state.weights[name] ?? m.start}`;
+            const stall = state.stalls[name] || 0;
+            const stallHint = stall > 0
+                ? `<div class="text-[11px] text-[#F87171] mt-3">Stalled ${stall}/3 — ${stall >= 2 ? 'one more miss triggers a 10% deload' : 'repeat this weight'}</div>`
+                : '';
             const circles = Array.from({length: sets}).map((_,i) =>
                 `<div onclick="logSet(${exIdx},${i})" data-key="${exIdx}-${i}" class="set-circle">${i+1}</div>`).join("");
             return `<div class="sl-card rounded-3xl p-5">
@@ -822,6 +832,7 @@
                     <div class="text-right"><div class="text-3xl font-bold big-number">${weight}</div><div class="text-xs text-[#B0B0B0] -mt-1">${m.unit==='bw'?'':'lb'}</div></div>
                 </div>
                 <div class="flex gap-3 justify-center flex-wrap">${circles}</div>
+                ${stallHint}
             </div>`;
         }).join("");
 
@@ -832,18 +843,27 @@
         const key = `${exIdx}-${setIdx}`;
         const el = document.querySelector(`[data-key="${key}"]`);
         const cur = state.liveSets[key];
-        // cycle: empty -> completed -> missed -> empty
+        // cycle: empty -> completed (✓) -> failed (✗) -> empty
         if (!cur) {
             state.liveSets[key] = "completed";
             el.classList.add("completed"); el.classList.remove("missed");
+            el.innerHTML = '<i class="fa-solid fa-check"></i>';
             setTimeout(() => { if (document.getElementById("timer-modal").classList.contains("hidden")) showRestTimer(); }, 700);
         } else if (cur === "completed") {
             state.liveSets[key] = "missed";
             el.classList.remove("completed"); el.classList.add("missed");
+            el.innerHTML = '<i class="fa-solid fa-xmark"></i>';
         } else {
             delete state.liveSets[key];
             el.classList.remove("completed","missed");
+            el.textContent = (setIdx + 1);
         }
+    }
+
+    // 10% deload, rounded to the nearest 5 lb, floored at the empty bar (or 5 lb for dumbbells).
+    function deloadWeight(name, w) {
+        const floor = name.startsWith("DB ") ? 5 : 45;
+        return Math.max(floor, Math.round((w * 0.9) / 5) * 5);
     }
 
     async function finishWorkout() {
@@ -854,18 +874,39 @@
         let anyLogged = Object.keys(state.liveSets).length > 0;
         if (!anyLogged) { if (!confirm("No sets logged. Finish anyway?")) return; }
 
-        // Build per-exercise summary + apply progression
         let volume = 0;
-        const exercises = w.exercises.map(([name,sets,reps], exIdx) => {
+        const summary = [];
+        const exercises = w.exercises.map(([name, sets, reps], exIdx) => {
             const m = meta(name);
             const weight = state.weights[name] ?? m.start;
             let completed = 0;
-            for (let i=0;i<sets;i++){ if (state.liveSets[`${exIdx}-${i}`] === "completed") completed++; }
+            for (let i = 0; i < sets; i++) { if (state.liveSets[`${exIdx}-${i}`] === "completed") completed++; }
             const allDone = completed === sets;
             if (m.unit !== "bw") volume += weight * reps * completed;
-            // Progression: add weight only if every working set completed; else repeat
-            if (allDone && m.increment > 0) state.weights[name] = weight + m.increment;
-            return { name, sets, reps, weight, completedSets: completed, allCompleted: allDone };
+
+            // ---- Official StrongLifts progression / deload logic ----
+            let outcome, nextWeight = weight;
+            if (m.unit === "bw" || m.increment === 0) {
+                outcome = "logged";                         // bodyweight: no barbell progression
+            } else if (allDone) {
+                nextWeight = weight + m.increment;          // completed 5x5 -> add weight
+                state.weights[name] = nextWeight;
+                state.stalls[name] = 0;                      // reset fail streak
+                outcome = "added";
+            } else {
+                const fails = (state.stalls[name] || 0) + 1;
+                if (fails >= 3) {                            // failed 3x in a row -> deload 10%
+                    nextWeight = deloadWeight(name, weight);
+                    state.weights[name] = nextWeight;
+                    state.stalls[name] = 0;
+                    outcome = "deload";
+                } else {                                     // failed -> repeat same weight
+                    state.stalls[name] = fails;
+                    outcome = "repeat";
+                }
+            }
+            summary.push({ name, weight, nextWeight, completed, sets, outcome, stall: state.stalls[name] || 0, unit: m.unit });
+            return { name, sets, reps, weight, completedSets: completed, allCompleted: allDone, outcome, nextWeight };
         });
 
         const date = new Date();
@@ -883,11 +924,33 @@
         state.workouts.push(workout);
 
         await saveWorkout(workout);
-        await saveSettings();   // persist updated weights
+        await saveSettings();   // persist updated weights + stalls
 
         renderHome();
-        alert("Workout saved! Weights updated for next session.");
-        showSection("home-section");
+        showWorkoutSummary(summary);
+    }
+
+    // Shows what the app did to each lift's weight, so the progression/deload logic is transparent.
+    function showWorkoutSummary(rows) {
+        const line = (r) => {
+            const w = r.unit === "bw" ? "BW" : `${r.weight} lb`;
+            if (r.outcome === "added")
+                return `<div class="flex justify-between"><span>${r.name}</span><span class="text-green-400 font-mono">→ ${r.nextWeight} lb (＋)</span></div>`;
+            if (r.outcome === "repeat")
+                return `<div class="flex justify-between"><span>${r.name}</span><span class="text-[#FBBF24] font-mono">repeat ${r.weight} lb (miss ${r.stall}/3)</span></div>`;
+            if (r.outcome === "deload")
+                return `<div class="flex justify-between"><span>${r.name}</span><span class="text-[#F87171] font-mono">deload → ${r.nextWeight} lb</span></div>`;
+            return `<div class="flex justify-between"><span>${r.name}</span><span class="text-[#B0B0B0] font-mono">logged (${w})</span></div>`;
+        };
+        const html = `<div id="summary-modal" class="fixed inset-0 bg-black/80 flex items-center justify-center z-[300] p-4">
+            <div class="sl-card w-full max-w-md rounded-3xl p-6">
+                <div class="text-center mb-5"><div class="text-2xl font-bold">Workout saved</div>
+                    <p class="text-sm text-[#B0B0B0] mt-1">Here's what changes for next session.</p></div>
+                <div class="space-y-2.5 text-sm">${rows.map(line).join("")}</div>
+                <button onclick="document.getElementById('summary-modal').remove(); showSection('home-section');"
+                        class="w-full mt-6 py-3 bg-[#B91C1C] hover:bg-[#9B1B1B] rounded-2xl font-bold">Done</button>
+            </div></div>`;
+        document.body.insertAdjacentHTML("beforeend", html);
     }
 
     // ================================================================

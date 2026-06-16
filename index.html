@@ -9,6 +9,12 @@
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#B91C1C">
 
+    <!-- Favicon (reuse the app icon) — silences the automatic /favicon.ico 404 -->
+    <link rel="icon" type="image/png" href="icons/icon-192.png">
+
+    <!-- Installable web app: standard tag first (Chrome), Apple tag kept for iOS Safari -->
+    <meta name="mobile-web-app-capable" content="yes">
+
     <!-- iOS home-screen install support (Safari ignores manifest theme/standalone; these are required) -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">

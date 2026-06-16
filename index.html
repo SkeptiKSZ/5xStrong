@@ -4,10 +4,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>5xStrong • Web</title>
+
+    <!-- PWA: link the manifest so the app is installable (relative path works on GitHub Pages subpaths) -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#B91C1C">
+
+    <!-- iOS home-screen install support (Safari ignores manifest theme/standalone; these are required) -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="5xStrong">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <!-- Chart.js for beautiful progress graphs -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Firebase Compat SDK (for single-file apps) -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=system-ui&amp;display=swap');
         
@@ -716,6 +732,24 @@
         window.onload = initApp;
 
         // ============================================
+        // SERVICE WORKER REGISTRATION (offline support)
+        // ============================================
+        // Guarded the same way as Firebase: skip under file:// / unsupported contexts
+        // so we never throw a SecurityError in a sandboxed environment.
+        (function registerServiceWorker() {
+            const sandboxed = window.location.protocol === 'file:' || !('serviceWorker' in navigator);
+            if (sandboxed) {
+                console.log('%c[5xStrong] Service worker skipped (sandboxed or unsupported).', 'color:#fbbf24');
+                return;
+            }
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(() => console.log('%c[5xStrong] Service worker registered.', 'color:#22c55e'))
+                    .catch((err) => console.warn('[5xStrong] Service worker registration failed:', err));
+            });
+        })();
+
+        // ============================================
         // PROGRESS CHARTS WITH RICH MOCK DATA
         // ============================================
 
@@ -1020,22 +1054,27 @@
             Deadlift: 135
         };
 
-        // Safe localStorage wrapper (prevents crashes in sandboxed environments)
+        // Detect sandboxed environment early
+        const isSandboxedEnvironment = window.location.protocol === 'file:' || 
+                                      typeof localStorage === 'undefined' ||
+                                      !window.indexedDB;
+
+        // Safe localStorage wrapper
         const safeStorage = {
             getItem: (key) => {
+                if (isSandboxedEnvironment) return null;
                 try {
                     return localStorage.getItem(key);
                 } catch (e) {
-                    console.warn('[5xStrong] localStorage unavailable (sandboxed). Using memory only.');
                     return null;
                 }
             },
             setItem: (key, value) => {
+                if (isSandboxedEnvironment) return false;
                 try {
                     localStorage.setItem(key, value);
                     return true;
                 } catch (e) {
-                    console.warn('[5xStrong] Could not save to localStorage. Data will reset on refresh.');
                     return false;
                 }
             }
@@ -1169,28 +1208,46 @@
         let db = null;
 
         function initializeFirebase() {
+            // Detect sandboxed environment first (file:// or restricted context)
+            const isSandboxed = window.location.protocol === 'file:' || 
+                               typeof localStorage === 'undefined' ||
+                               !window.indexedDB;
+
+            if (isSandboxed) {
+                console.log('[5xStrong] Running in sandboxed environment - skipping Firebase initialization');
+                console.log('%c[5xStrong] Using local storage only', 'color:#fbbf24');
+                return; // Exit early to avoid SecurityError
+            }
+
             // TODO: Replace with your Firebase config
             const firebaseConfig = {
-                // apiKey: "YOUR_API_KEY",
-                // authDomain: "YOUR_PROJECT.firebaseapp.com",
-                // projectId: "YOUR_PROJECT_ID",
-                // storageBucket: "YOUR_PROJECT.appspot.com",
-                // messagingSenderId: "YOUR_SENDER_ID",
-                // appId: "YOUR_APP_ID"
-            };
+  apiKey: "AIzaSyBy6yjQQk3sas6IRcVsv9BuyaMXZryU97U",
+  authDomain: "xstrong-ba964.firebaseapp.com",
+  projectId: "xstrong-ba964",
+  storageBucket: "xstrong-ba964.firebasestorage.app",
+  messagingSenderId: "913764691711",
+  appId: "1:913764691711:web:d869239a50f515ccac26ca",
+  measurementId: "G-YS1PRPGVY0"
+};
 
             // Only initialize if config looks valid
             if (firebaseConfig.apiKey && firebaseConfig.apiKey !== "YOUR_API_KEY") {
                 try {
                     firebaseApp = firebase.initializeApp(firebaseConfig);
                     db = firebase.firestore();
-                    
-                    // Enable offline persistence
-                    db.enablePersistence().catch((err) => {
-                        if (err.code !== 'failed-precondition') {
-                            console.log('Persistence not enabled:', err);
-                        }
-                    });
+
+                    // Try to enable offline persistence
+                    try {
+                        db.enablePersistence().catch((err) => {
+                            if (err.code === 'failed-precondition') {
+                                console.log('Firestore persistence disabled: Multiple tabs open');
+                            } else if (err.code === 'unimplemented') {
+                                console.log('Firestore persistence not supported');
+                            }
+                        });
+                    } catch (e) {
+                        console.warn('[5xStrong] Could not enable persistence');
+                    }
 
                     console.log('%c[5xStrong] Firebase initialized successfully', 'color:#22c55e');
                     
@@ -1202,6 +1259,14 @@
             } else {
                 console.log('%c[5xStrong] Firebase not configured yet. Using local storage only.', 'color:#fbbf24');
             }
+        }
+
+        // Generates a human-readable, sortable unique workout ID.
+        // Format: YYYY-MM-DD_program-slug_workout-type  (e.g. 2026-06-15_5xstrong-5x5_A)
+        // Was referenced by saveWorkoutToFirebase but previously undefined -> caused a ReferenceError on save.
+        function generateWorkoutId(programSlug, workoutType, date = new Date()) {
+            const iso = date.toISOString().split('T')[0];
+            return `${iso}_${programSlug}_${workoutType}`;
         }
 
         async function saveWorkoutToFirebase(workoutData) {

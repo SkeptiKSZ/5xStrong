@@ -1,0 +1,66 @@
+{
+  "programs": [
+    {
+      "id": "5xstrong-5x5",
+      "name": "5xStrong 5×5",
+      "description": "The classic beginner strength program. Train 3x per week with linear progression.",
+      "frequency": 3,
+      "type": "full_body",
+      "workouts": [
+        {
+          "type": "A",
+          "exercises": [
+            {
+              "name": "Squat",
+              "sets": 5,
+              "reps": 5,
+              "defaultWeight": 95
+            },
+            {
+              "name": "Bench Press",
+              "sets": 5,
+              "reps": 5,
+              "defaultWeight": 95
+            },
+            {
+              "name": "Barbell Row",
+              "sets": 5,
+              "reps": 5,
+              "defaultWeight": 95
+            }
+          ]
+        },
+        {
+          "type": "B",
+          "exercises": [
+            {
+              "name": "Squat",
+              "sets": 5,
+              "reps": 5,
+              "defaultWeight": 95
+            },
+            {
+              "name": "Overhead Press",
+              "sets": 5,
+              "reps": 5,
+              "defaultWeight": 65
+            },
+            {
+              "name": "Deadlift",
+              "sets": 1,
+              "reps": 5,
+              "defaultWeight": 135
+            }
+          ]
+        }
+      ],
+      "progression": {
+        "Squat": { "increment": 5, "unit": "lb" },
+        "Bench Press": { "increment": 2.5, "unit": "lb" },
+        "Overhead Press": { "increment": 2.5, "unit": "lb" },
+        "Barbell Row": { "increment": 2.5, "unit": "lb" },
+        "Deadlift": { "increment": 5, "unit": "lb" }
+      }
+    }
+  ]
+}

@@ -237,21 +237,22 @@
                 <div id="progress-content" class="hidden">
                     <div class="grid grid-cols-2 gap-3 mb-6">
                         <div class="sl-card rounded-2xl p-4">
-                            <div class="text-xs text-[#B0B0B0]">SQUAT (latest)</div>
+                            <div id="pr-a-label" class="text-xs text-[#B0B0B0]">SQUAT (best)</div>
                             <div class="flex items-baseline gap-x-1">
                                 <span id="pr-squat" class="text-4xl font-bold">—</span><span class="text-lg text-[#B0B0B0]">lb</span>
                             </div>
                         </div>
                         <div class="sl-card rounded-2xl p-4">
-                            <div class="text-xs text-[#B0B0B0]">BENCH (latest)</div>
+                            <div id="pr-b-label" class="text-xs text-[#B0B0B0]">BENCH (best)</div>
                             <div class="flex items-baseline gap-x-1">
                                 <span id="pr-bench" class="text-4xl font-bold">—</span><span class="text-lg text-[#B0B0B0]">lb</span>
                             </div>
                         </div>
                     </div>
                     <div class="sl-card rounded-3xl p-5 mb-6">
-                        <div class="font-semibold mb-3">Squat Progression</div>
-                        <div class="chart-wrap"><canvas id="squatProgressChart"></canvas></div>
+                        <div id="progress-chart-title" class="font-semibold mb-3">Progression</div>
+                        <div id="progress-ex-chips" class="flex flex-wrap gap-2 mb-4"></div>
+                        <div class="chart-wrap"><canvas id="exerciseProgressChart"></canvas></div>
                     </div>
                     <div class="sl-card rounded-3xl p-5">
                         <div class="font-semibold mb-3">Volume per Workout</div>
@@ -311,6 +312,11 @@
                         <div id="settings-email" class="text-[#B0B0B0] text-sm mb-3">—</div>
                         <button onclick="handleSignOut()" class="px-4 py-2 bg-[#1A1A1A] hover:bg-[#2A2A2A] rounded-2xl text-sm font-medium text-[#F87171]">Sign out</button>
                     </div>
+                    <div class="sl-card rounded-2xl p-5 border-[#7F1D1D]">
+                        <div class="font-semibold mb-1 text-[#F87171]">Danger Zone</div>
+                        <div class="text-[#B0B0B0] text-sm mb-3">Delete every logged workout and reset all weights to the program defaults. Your account and program stay. This can't be undone.</div>
+                        <button onclick="confirmResetData()" class="px-4 py-2 bg-transparent border border-[#7F1D1D] text-[#F87171] rounded-2xl text-sm font-medium">Reset all workout data</button>
+                    </div>
                 </div>
             </div>
 
@@ -349,15 +355,21 @@
     </div>
 
     <!-- Rest Timer Modal -->
-    <div id="timer-modal" onclick="if(event.target.id==='timer-modal') hideRestTimer()" class="hidden fixed inset-0 bg-black/80 items-center justify-center z-[100]">
+    <div id="timer-modal" onclick="if(event.target.id==='timer-modal') closeTimerModal()" class="hidden fixed inset-0 bg-black/80 items-center justify-center z-[100]">
         <div class="sl-card w-full max-w-sm mx-4 rounded-3xl p-8 text-center">
             <div class="text-sm text-[#B0B0B0] mb-1">REST</div>
             <div id="timer-display" class="text-[92px] font-bold tabular-nums leading-none mb-1">3:00</div>
             <div class="flex justify-center gap-3 mt-6">
                 <button onclick="addRestTime(60)" class="px-5 py-2.5 bg-[#1A1A1A] hover:bg-[#2A2A2A] rounded-2xl text-sm font-medium">+1 min</button>
-                <button onclick="hideRestTimer()" class="px-8 py-2.5 bg-[#B91C1C] hover:bg-[#9B1B1B] text-white rounded-2xl font-bold">SKIP</button>
+                <button onclick="closeTimerModal()" class="px-5 py-2.5 bg-[#1A1A1A] hover:bg-[#2A2A2A] rounded-2xl text-sm font-medium">Minimize</button>
+                <button onclick="stopRest()" class="px-6 py-2.5 bg-[#B91C1C] hover:bg-[#9B1B1B] text-white rounded-2xl font-bold">SKIP</button>
             </div>
         </div>
+    </div>
+
+    <!-- Floating rest-timer pill (visible when the timer is running and the modal is minimized) -->
+    <div id="timer-pill" onclick="showRestTimer()" class="hidden fixed top-20 right-3 z-[90] px-3.5 py-2 bg-[#B91C1C] rounded-full text-sm font-bold shadow-lg cursor-pointer items-center gap-x-1.5">
+        <i class="fa-solid fa-stopwatch"></i><span id="timer-pill-text">3:00</span>
     </div>
 
     <script>
@@ -692,6 +704,42 @@
         } else { persistLocal(); }
     }
 
+    async function deleteWorkoutFromStore(id) {
+        if (firebaseReady && db && state.uid) {
+            try { await db.collection("users").doc(state.uid).collection("workouts").doc(id).delete(); }
+            catch(e){ console.error("[5xStrong] deleteWorkout failed:", e); }
+        } else { persistLocal(); }
+    }
+
+    function confirmResetData() {
+        if (!confirm("Delete ALL workouts and reset every weight to the program defaults? This cannot be undone.")) return;
+        if (!confirm("Are you absolutely sure? This permanently erases your entire training history.")) return;
+        resetAllData();
+    }
+    async function resetAllData() {
+        // Wipe stored workouts
+        if (firebaseReady && db && state.uid) {
+            try {
+                const snap = await db.collection("users").doc(state.uid).collection("workouts").get();
+                const batch = db.batch();
+                snap.forEach(d => batch.delete(d.ref));
+                await batch.commit();
+            } catch(e){ console.error("[5xStrong] reset (delete workouts) failed:", e); }
+        }
+        // Reset in-memory state
+        state.workouts = [];
+        state.stalls = {};
+        state.weights = {};
+        seedWeightsForProgram(state.programId);   // restore program defaults
+        await saveSettings();
+        if (!firebaseReady) persistLocal();
+        // Re-render
+        renderHome(); renderHistory();
+        if (document.getElementById("progress-section").classList.contains("active")) renderProgress();
+        alert("All workout data cleared. You're starting fresh.");
+        showSection("home-section");
+    }
+
     function persistLocal() {
         safeStorage.setItem(localKey(), JSON.stringify({ programId: state.programId, weights: state.weights, stalls: state.stalls, workouts: state.workouts }));
     }
@@ -826,10 +874,14 @@
                 : '';
             const circles = Array.from({length: sets}).map((_,i) =>
                 `<div onclick="logSet(${exIdx},${i})" data-key="${exIdx}-${i}" class="set-circle">${i+1}</div>`).join("");
+            const weightCell = m.unit === "bw"
+                ? `<div class="text-3xl font-bold big-number">BW</div>`
+                : `<div onclick="openPlateCalc('${name.replace(/'/g,"\\'")}')" data-weight-for="${name}" class="text-3xl font-bold big-number underline decoration-dotted decoration-[#6B7280] underline-offset-4 cursor-pointer">${weight}</div>
+                   <div class="text-[10px] text-[#6B7280] -mt-0.5">tap for plates</div>`;
             return `<div class="sl-card rounded-3xl p-5">
                 <div class="flex justify-between items-start mb-4">
                     <div><div class="font-bold text-xl">${name}</div><div class="text-sm text-[#B0B0B0]">${sets} sets × ${reps} reps</div></div>
-                    <div class="text-right"><div class="text-3xl font-bold big-number">${weight}</div><div class="text-xs text-[#B0B0B0] -mt-1">${m.unit==='bw'?'':'lb'}</div></div>
+                    <div class="text-right">${weightCell}<div class="text-xs text-[#B0B0B0] -mt-1">${m.unit==='bw'?'':'lb'}</div></div>
                 </div>
                 <div class="flex gap-3 justify-center flex-wrap">${circles}</div>
                 ${stallHint}
@@ -845,10 +897,11 @@
         const cur = state.liveSets[key];
         // cycle: empty -> completed (✓) -> failed (✗) -> empty
         if (!cur) {
+            ensureAudio(); // unlock audio within this user gesture so the end-of-rest alarm can play
             state.liveSets[key] = "completed";
             el.classList.add("completed"); el.classList.remove("missed");
             el.innerHTML = '<i class="fa-solid fa-check"></i>';
-            setTimeout(() => { if (document.getElementById("timer-modal").classList.contains("hidden")) showRestTimer(); }, 700);
+            setTimeout(() => { if (!isTimerModalOpen()) startRest(180); }, 700);
         } else if (cur === "completed") {
             state.liveSets[key] = "missed";
             el.classList.remove("completed"); el.classList.add("missed");
@@ -954,7 +1007,80 @@
     }
 
     // ================================================================
-    // HISTORY
+    // PLATE CALCULATOR + WEIGHT OVERRIDE
+    //  - Standard 45 lb bar; decomposes (total-45)/2 into plates per side.
+    //  - Override sets the new working weight; progression continues from there.
+    // ================================================================
+    const BAR_WEIGHT = 45;
+    const PLATES = [45, 35, 25, 10, 5, 2.5];
+    function plateBreakdown(total, bar = BAR_WEIGHT) {
+        if (total < bar) return { impossible: true, perSide: [], leftover: 0 };
+        let perSide = (total - bar) / 2;
+        const out = [];
+        for (const p of PLATES) { while (perSide >= p - 1e-9) { out.push(p); perSide = Math.round((perSide - p) * 100) / 100; } }
+        return { impossible: false, perSide: out, leftover: Math.round(perSide * 100) / 100 };
+    }
+    function plateVisualHTML(total) {
+        const b = plateBreakdown(total);
+        if (b.impossible) return `<div class="text-sm text-[#F87171]">That's below the empty bar (${BAR_WEIGHT} lb).</div>`;
+        const sizeFor = (p) => ({45:64,35:56,25:48,10:38,5:30,2.5:24})[p] || 30;
+        const plateEls = b.perSide.map(p =>
+            `<div class="flex flex-col items-center justify-center bg-[#2A2A2A] border border-[#B91C1C] rounded-md text-[10px] font-bold" style="width:18px;height:${sizeFor(p)}px">${p}</div>`).join("");
+        const leftover = b.leftover > 0 ? `<div class="text-[11px] text-[#FBBF24] mt-2">＋${b.leftover} lb per side doesn't fit standard plates</div>` : "";
+        const list = b.perSide.length ? b.perSide.join(" + ") : "just the empty bar";
+        return `
+            <div class="flex items-center justify-center gap-1 my-4">
+                ${plateEls}
+                <div class="h-1.5 w-12 bg-[#6B7280] rounded-full"></div>
+                <div class="w-3 h-8 bg-[#444] rounded-sm"></div>
+            </div>
+            <div class="text-center text-sm"><span class="text-[#B0B0B0]">Each side:</span> <span class="font-semibold">${list}</span></div>
+            ${leftover}`;
+    }
+    function openPlateCalc(name) {
+        const m = meta(name);
+        const weight = state.weights[name] ?? m.start;
+        const isDB = name.startsWith("DB ");
+        const visual = isDB
+            ? `<div class="text-center text-sm text-[#B0B0B0] my-4">Dumbbell exercise — use <span class="font-bold text-white">${weight} lb</span> per hand. (No bar math.)</div>`
+            : `<div id="plate-visual">${plateVisualHTML(weight)}</div>`;
+        const html = `<div id="plate-modal" onclick="if(event.target.id==='plate-modal') document.getElementById('plate-modal').remove()" class="fixed inset-0 bg-black/80 flex items-center justify-center z-[300] p-4">
+            <div class="sl-card w-full max-w-sm rounded-3xl p-6">
+                <div class="flex justify-between items-center mb-1">
+                    <div class="font-bold text-xl">${name}</div>
+                    <button onclick="document.getElementById('plate-modal').remove()" class="text-2xl text-[#B0B0B0]">&times;</button>
+                </div>
+                <div class="text-sm text-[#B0B0B0]">Plate calculator${isDB ? "" : ` • ${BAR_WEIGHT} lb bar`}</div>
+                ${visual}
+                <div class="border-t border-[#2A2A2A] mt-4 pt-4">
+                    <label class="text-xs text-[#B0B0B0] font-medium">USE A DIFFERENT WEIGHT TODAY</label>
+                    <div class="flex items-center gap-x-2 mt-2">
+                        <input type="number" id="plate-override" value="${weight}" ${isDB ? "" : `oninput="livePlatePreview()"`}
+                            class="flex-1 bg-[#111] border border-[#2A2A2A] rounded-xl px-3 py-2.5 text-right font-mono text-lg">
+                        <span class="text-[#B0B0B0] text-sm">lb</span>
+                    </div>
+                    <button onclick="applyWeightOverride('${name.replace(/'/g,"\\'")}')" class="w-full mt-3 py-3 bg-[#B91C1C] hover:bg-[#9B1B1B] rounded-2xl font-bold">Use this weight</button>
+                    <p class="text-[11px] text-[#6B7280] mt-3 text-center">This becomes your new working weight; the app keeps progressing from here.</p>
+                </div>
+            </div></div>`;
+        document.body.insertAdjacentHTML("beforeend", html);
+    }
+    function livePlatePreview() {
+        const v = parseFloat(document.getElementById("plate-override").value);
+        const vis = document.getElementById("plate-visual");
+        if (vis && v > 0) vis.innerHTML = plateVisualHTML(v);
+    }
+    async function applyWeightOverride(name) {
+        const v = parseFloat(document.getElementById("plate-override").value);
+        if (!v || v <= 0) { alert("Enter a valid weight."); return; }
+        state.weights[name] = v;
+        state.stalls[name] = 0;   // manual reset of the baseline clears any stall streak
+        await saveSettings();
+        const el = document.querySelector(`[data-weight-for="${name}"]`);
+        if (el) el.textContent = v;
+        const modal = document.getElementById("plate-modal"); if (modal) modal.remove();
+        renderHome();
+    }
     // ================================================================
     function renderHistory() {
         const list = document.getElementById("history-list");
@@ -965,15 +1091,99 @@
             const done = w.exercises.filter(e=>e.allCompleted).length;
             const total = w.exercises.length;
             const ok = done === total;
-            return `<div class="sl-card rounded-2xl px-5 py-4 flex justify-between items-center">
+            return `<div onclick="openWorkoutEditor('${w.id}')" class="sl-card rounded-2xl px-5 py-4 flex justify-between items-center cursor-pointer active:bg-[#222]">
                 <div><div class="font-semibold">${w.workoutLabel} • ${formatShort(w.date)}</div>
                      <div class="text-xs text-[#B0B0B0]">${w.programName} • ${total} exercises</div></div>
-                <div class="text-right text-sm"><div class="font-mono">${w.volume} lb vol</div>
-                     <div class="text-xs ${ok?'text-green-400':'text-[#B0B0B0]'}">${ok?'All sets completed':done+'/'+total+' lifts done'}</div></div>
+                <div class="flex items-center gap-x-3">
+                    <div class="text-right text-sm"><div class="font-mono">${w.volume} lb vol</div>
+                         <div class="text-xs ${ok?'text-green-400':'text-[#B0B0B0]'}">${ok?'All sets completed':done+'/'+total+' lifts done'}</div></div>
+                    <i class="fa-solid fa-pen text-xs text-[#6B7280]"></i>
+                </div>
             </div>`;
         }).join("");
     }
     function formatShort(d){ return new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric'}); }
+
+    // ================================================================
+    // EDIT / DELETE A PAST WORKOUT
+    //  - Edits correct the logged record (weight + completed sets) and recompute
+    //    volume; charts, stats and the calendar update from state.workouts.
+    //  - Editing the past does NOT rewind your current working weights — adjust
+    //    those directly in Settings → Edit weights (keeps progression predictable).
+    // ================================================================
+    function openWorkoutEditor(id) {
+        const w = state.workouts.find(x => x.id === id);
+        if (!w) return;
+        const rows = w.exercises.map((e, idx) => {
+            const m = meta(e.name);
+            const weightField = m.unit === "bw"
+                ? `<div class="text-[#B0B0B0] text-sm w-24 text-right">Bodyweight</div>`
+                : `<input type="number" id="edit-w-${idx}" value="${e.weight}" class="w-24 bg-[#111] border border-[#2A2A2A] rounded-xl px-3 py-2 text-right font-mono">`;
+            return `<div class="py-3 border-b border-[#2A2A2A]">
+                <div class="font-medium mb-2">${e.name} <span class="text-xs text-[#B0B0B0]">(${e.sets}×${e.reps})</span></div>
+                <div class="flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-x-2">
+                        <span class="text-xs text-[#B0B0B0]">Weight</span>${weightField}<span class="text-[#B0B0B0] text-xs">${m.unit==='bw'?'':'lb'}</span>
+                    </div>
+                    <div class="flex items-center gap-x-2">
+                        <span class="text-xs text-[#B0B0B0]">Sets done</span>
+                        <input type="number" id="edit-c-${idx}" min="0" max="${e.sets}" value="${e.completedSets}" class="w-16 bg-[#111] border border-[#2A2A2A] rounded-xl px-3 py-2 text-right font-mono">
+                        <span class="text-[#B0B0B0] text-xs">/ ${e.sets}</span>
+                    </div>
+                </div>
+            </div>`;
+        }).join("");
+        const html = `<div id="wedit-modal" class="fixed inset-0 bg-black/80 flex items-center justify-center z-[300] p-4">
+            <div class="sl-card w-full max-w-md rounded-3xl p-6 max-h-[90vh] overflow-y-auto">
+                <div class="flex justify-between items-start mb-4">
+                    <div><div class="text-sm text-[#B0B0B0]">${new Date(w.date).toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</div>
+                        <div class="text-2xl font-bold">${w.workoutLabel}</div><div class="text-sm text-[#B0B0B0]">${w.programName}</div></div>
+                    <button onclick="document.getElementById('wedit-modal').remove()" class="text-2xl text-[#B0B0B0]">&times;</button>
+                </div>
+                <div>${rows}</div>
+                <button onclick="saveWorkoutEdits('${id}')" class="w-full mt-5 py-3 bg-[#B91C1C] hover:bg-[#9B1B1B] rounded-2xl font-bold">Save changes</button>
+                <button onclick="deleteWorkout('${id}')" class="w-full mt-3 py-3 bg-transparent border border-[#7F1D1D] text-[#F87171] rounded-2xl font-medium">Delete this workout</button>
+                <button onclick="document.getElementById('wedit-modal').remove()" class="w-full mt-3 text-xs text-[#B0B0B0]">Cancel</button>
+                <p class="text-[11px] text-[#6B7280] mt-4 text-center">Editing the log won't change your current working weights — adjust those in Settings.</p>
+            </div></div>`;
+        document.body.insertAdjacentHTML("beforeend", html);
+    }
+
+    async function saveWorkoutEdits(id) {
+        const w = state.workouts.find(x => x.id === id);
+        if (!w) return;
+        let volume = 0;
+        w.exercises = w.exercises.map((e, idx) => {
+            const m = meta(e.name);
+            let weight = e.weight;
+            if (m.unit !== "bw") { const wi = document.getElementById(`edit-w-${idx}`); if (wi && wi.value !== "") weight = parseFloat(wi.value) || weight; }
+            const ci = document.getElementById(`edit-c-${idx}`);
+            let completed = ci ? Math.max(0, Math.min(e.sets, parseInt(ci.value) || 0)) : e.completedSets;
+            if (m.unit !== "bw") volume += weight * e.reps * completed;
+            return { ...e, weight, completedSets: completed, allCompleted: completed === e.sets };
+        });
+        w.volume = Math.round(volume);
+        w.allCompleted = w.exercises.every(e => e.allCompleted);
+        await saveWorkout(w);   // overwrites the stored doc
+        const m = document.getElementById("wedit-modal"); if (m) m.remove();
+        refreshAfterWorkoutChange();
+    }
+
+    async function deleteWorkout(id) {
+        if (!confirm("Delete this workout permanently? This can't be undone.")) return;
+        state.workouts = state.workouts.filter(w => w.id !== id);
+        await deleteWorkoutFromStore(id);
+        ["wedit-modal","wo-detail"].forEach(mid => { const el = document.getElementById(mid); if (el) el.remove(); });
+        refreshAfterWorkoutChange();
+    }
+
+    // Re-render everything that derives from state.workouts.
+    function refreshAfterWorkoutChange() {
+        renderHistory();
+        renderHome();
+        if (document.getElementById("calendar-section").classList.contains("active")) renderCalendar();
+        if (document.getElementById("progress-section").classList.contains("active")) renderProgress();
+    }
 
     // ================================================================
     // CALENDAR (real data)
@@ -1025,6 +1235,10 @@
                 </div>
                 <div class="border-t border-[#2A2A2A] pt-3">${rows}</div>
                 <div class="flex justify-between text-sm mt-3 pt-3 border-t border-[#2A2A2A]"><span class="text-[#B0B0B0]">Total volume</span><span class="font-bold">${w.volume} lb</span></div>
+                <div class="flex gap-3 mt-5">
+                    <button onclick="document.getElementById('wo-detail').remove(); openWorkoutEditor('${w.id}')" class="flex-1 py-3 bg-[#1A1A1A] hover:bg-[#2A2A2A] rounded-2xl text-sm font-medium">Edit</button>
+                    <button onclick="deleteWorkout('${w.id}')" class="flex-1 py-3 bg-transparent border border-[#7F1D1D] text-[#F87171] rounded-2xl text-sm font-medium">Delete</button>
+                </div>
             </div></div>`;
         document.body.insertAdjacentHTML("beforeend", html);
     }
@@ -1034,13 +1248,20 @@
     //  - fixed-height .chart-wrap container
     //  - destroy previous Chart instances before recreating
     // ================================================================
-    let charts = { squat: null, volume: null };
-    function renderProgress() {
-        const squatPoints = state.workouts
-            .filter(w => w.exercises.some(e => e.name === "Squat"))
-            .sort((a,b)=> new Date(a.date)-new Date(b.date))
-            .map(w => ({ x: w.date, y: w.exercises.find(e=>e.name==="Squat").weight }));
+    let charts = { exercise: null, volume: null };
+    let progressExercise = null;   // currently-selected exercise for the progression chart
 
+    // Exercises (with weight) that appear in the user's logged history, in first-seen order.
+    function exercisesInHistory() {
+        const seen = [];
+        [...state.workouts].sort((a,b)=> new Date(a.date)-new Date(b.date))
+            .forEach(w => (w.exercises||[]).forEach(e => {
+                if (meta(e.name).unit !== "bw" && !seen.includes(e.name)) seen.push(e.name);
+            }));
+        return seen;
+    }
+
+    function renderProgress() {
         if (state.workouts.length === 0) {
             document.getElementById("progress-empty").classList.remove("hidden");
             document.getElementById("progress-content").classList.add("hidden");
@@ -1053,6 +1274,23 @@
         document.getElementById("pr-squat").textContent = bestWeight("Squat") ?? "—";
         document.getElementById("pr-bench").textContent = bestWeight("Bench Press") ?? "—";
 
+        // Build the exercise selector chips
+        const exes = exercisesInHistory();
+        if (!progressExercise || !exes.includes(progressExercise)) {
+            progressExercise = exes.includes("Squat") ? "Squat" : exes[0];
+        }
+        document.getElementById("progress-ex-chips").innerHTML = exes.map(name => {
+            const active = name === progressExercise;
+            return `<button onclick="selectProgressExercise('${name.replace(/'/g,"\\'")}')"
+                class="text-xs px-3 py-1.5 rounded-full ${active ? 'bg-[#B91C1C] text-white font-semibold' : 'bg-[#111] text-[#B0B0B0]'}">${name}</button>`;
+        }).join("");
+
+        drawProgressCharts();
+    }
+
+    function selectProgressExercise(name) { progressExercise = name; renderProgress(); }
+
+    function drawProgressCharts() {
         const baseOpts = {
             responsive: true, maintainAspectRatio: false, animation: false,
             plugins: { legend: { display: false } },
@@ -1061,13 +1299,18 @@
                 y: { grid:{color:'#2A2A2A'}, ticks:{color:'#6B7280',font:{size:10}} }
             }
         };
-
         destroyCharts();
-        const sc = document.getElementById("squatProgressChart");
-        if (sc) charts.squat = new Chart(sc, {
+
+        document.getElementById("progress-chart-title").textContent = `${progressExercise} Progression`;
+        const points = state.workouts
+            .filter(w => w.exercises.some(e => e.name === progressExercise))
+            .sort((a,b)=> new Date(a.date)-new Date(b.date))
+            .map(w => ({ x: w.date, y: w.exercises.find(e=>e.name===progressExercise).weight }));
+        const ec = document.getElementById("exerciseProgressChart");
+        if (ec) charts.exercise = new Chart(ec, {
             type: 'line',
-            data: { labels: squatPoints.map(p=>formatShort(p.x)),
-                    datasets: [{ data: squatPoints.map(p=>p.y), borderColor:'#B91C1C',
+            data: { labels: points.map(p=>formatShort(p.x)),
+                    datasets: [{ data: points.map(p=>p.y), borderColor:'#B91C1C',
                         backgroundColor:'rgba(185,28,28,0.1)', borderWidth:3, tension:0.3, fill:true,
                         pointBackgroundColor:'#B91C1C', pointRadius:4 }] },
             options: baseOpts
@@ -1201,27 +1444,82 @@
         if (id === 'home-section') renderHome();
     }
 
-    let timerInterval = null, timeLeft = 180;
-    function showRestTimer() {
-        const m = document.getElementById('timer-modal');
-        m.classList.remove('hidden'); m.classList.add('flex');
-        timeLeft = 180; updateTimerDisplay();
-        if (timerInterval) clearInterval(timerInterval);
-        timerInterval = setInterval(() => {
-            timeLeft--; updateTimerDisplay();
-            if (timeLeft <= 0) { clearInterval(timerInterval); if (navigator.vibrate) navigator.vibrate([200,100,200]); }
-        }, 1000);
+    // ---- Rest timer: timestamp-based so it stays accurate across screen lock ----
+    // (We compute remaining time from a fixed end time, not by counting ticks, so a
+    //  throttled/suspended tab can't make it drift. On return it shows the true time
+    //  or fires the alarm if it already elapsed while the screen was off.)
+    let restEnd = null, restTick = null, restRunning = false, restFired = false;
+
+    function fmtTime(s){ const m=Math.floor(s/60); return `${m}:${String(s%60).padStart(2,'0')}`; }
+    function restRemaining(){ return Math.max(0, Math.round((restEnd - Date.now()) / 1000)); }
+    function isTimerModalOpen(){ return document.getElementById('timer-modal').classList.contains('flex'); }
+
+    function startRest(seconds){
+        restEnd = Date.now() + seconds * 1000;
+        restRunning = true; restFired = false;
+        openTimerModal();
+        if (restTick) clearInterval(restTick);
+        restTick = setInterval(tickRest, 250);
+        tickRest();
     }
-    function updateTimerDisplay() {
-        const m = Math.floor(timeLeft/60), s = timeLeft%60;
-        document.getElementById('timer-display').textContent = `${m}:${String(s).padStart(2,'0')}`;
+    function tickRest(){
+        const r = restRemaining();
+        const disp = document.getElementById('timer-display');
+        if (disp) disp.textContent = fmtTime(r);
+        updatePill(r);
+        if (r <= 0) {
+            if (!restFired) { restFired = true; playAlarm(); }
+            if (restTick) { clearInterval(restTick); restTick = null; }
+            restRunning = false;
+            updatePill(0);
+        }
     }
-    function addRestTime(s){ timeLeft += s; updateTimerDisplay(); }
-    function hideRestTimer() {
-        const m = document.getElementById('timer-modal');
-        m.classList.remove('flex'); m.classList.add('hidden');
-        if (timerInterval){ clearInterval(timerInterval); timerInterval=null; }
+    function openTimerModal(){ const m=document.getElementById('timer-modal'); m.classList.remove('hidden'); m.classList.add('flex'); hidePill(); }
+    function closeTimerModal(){ const m=document.getElementById('timer-modal'); m.classList.remove('flex'); m.classList.add('hidden'); if (restRunning) updatePill(restRemaining()); }
+    function stopRest(){ restRunning=false; restFired=true; if(restTick){clearInterval(restTick);restTick=null;} closeTimerModal(); hidePill(); }
+    function showRestTimer(){ if (restRunning || restEnd) { openTimerModal(); tickRest(); } else { startRest(180); } }
+    function addRestTime(s){
+        restEnd = (restEnd || Date.now()) + s*1000;
+        if (!restRunning) { restRunning = true; restFired = false; if (!restTick) restTick = setInterval(tickRest, 250); }
+        tickRest();
     }
+    function updatePill(r){
+        const pill = document.getElementById('timer-pill');
+        if (!pill) return;
+        if (restRunning && !isTimerModalOpen()) {
+            document.getElementById('timer-pill-text').textContent = fmtTime(r);
+            pill.classList.remove('hidden'); pill.style.display = 'flex';
+        } else { hidePill(); }
+    }
+    function hidePill(){ const p=document.getElementById('timer-pill'); if(p){ p.classList.add('hidden'); p.style.display='none'; } }
+
+    // ---- Audio alarm (best-effort; unlocked by the tap that starts the timer) ----
+    let audioCtx = null;
+    function ensureAudio(){
+        try { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+              if (audioCtx.state === 'suspended') audioCtx.resume(); } catch(e){}
+    }
+    function playAlarm(){
+        if (navigator.vibrate) navigator.vibrate([300,150,300,150,300]); // Android; iOS ignores
+        try {
+            ensureAudio(); if (!audioCtx) return;
+            const now = audioCtx.currentTime;
+            [0, 0.5, 1.0].forEach((t) => {
+                const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+                o.type = 'sine'; o.frequency.value = 880;
+                o.connect(g); g.connect(audioCtx.destination);
+                g.gain.setValueAtTime(0.0001, now + t);
+                g.gain.exponentialRampToValueAtTime(0.35, now + t + 0.05);
+                g.gain.exponentialRampToValueAtTime(0.0001, now + t + 0.4);
+                o.start(now + t); o.stop(now + t + 0.42);
+            });
+        } catch(e){}
+    }
+    // When the app comes back to the foreground, re-sync the timer and fire the alarm
+    // if it elapsed while the screen was off.
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && (restRunning || (restEnd && !restFired))) tickRest();
+    });
 
     function setStatus(text, color){ document.getElementById("status-text").textContent=text; document.getElementById("status-dot").style.backgroundColor=color; }
     function show(id, disp){ const e=document.getElementById(id); e.classList.remove("hidden"); e.style.display=disp||"block"; }
